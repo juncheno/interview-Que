@@ -1,0 +1,133 @@
+import java.util.*;
+
+
+public class DemoOld {
+    private Word word;
+    private Map<String, HashSet<String>> dic = new HashMap<String, HashSet<String>>();
+    public static void main(String[] args) {
+        //初始化参数阶段
+        //天气,气温,温度   很好，不错,很舒服
+        List<List<String>> synonyms=new ArrayList<List<String>>();
+        List<String> s=new ArrayList<String>();
+        s.add("天气");
+        s.add("气温");
+        s.add("温度");
+        List<String> s2=new ArrayList<String>();
+        s2.add("很好");
+        s2.add("不错");
+        s2.add("很舒服");
+        List<String> s3=new ArrayList<String>();
+        s3.add("走走");
+        s3.add("溜溜");
+        s3.add("看看");
+        List<String> s4=new ArrayList<String>();
+        s4.add("好想");
+        s4.add("真想");
+        s4.add("太想");
+
+        synonyms.add(s);
+        synonyms.add(s2);
+        synonyms.add(s3);
+        synonyms.add(s4);
+        List <String> ans=new DemoOld().generateSentences(synonyms,"今天#天气#很好");
+        List <String> ans1=new DemoOld().generateSentences(synonyms,"好想#出去#走走");
+        for (int i = 0; i < ans.size(); i++) {
+            System.out.println(ans.get(i));
+        }
+        System.out.println("------------");
+        for (int i = 0; i < ans1.size(); i++) {
+            System.out.println(ans1.get(i));
+        }
+    }
+    public   List<String> generateSentences(List<List<String>> synonyms, String text) {
+        List<String> ans = new ArrayList<String>();
+        if (text == null || text.length() == 0) {
+            return ans;
+        }
+        if (synonyms == null || synonyms.size() == 0) {
+            ans.add(text);
+            return ans;
+        }
+        word = new Word(synonyms);
+        // 让近义词进行合并
+        for (List<String> synonym : synonyms) {
+            word.union(synonym.get(0), synonym.get(1));
+        }
+        // 分类存储近义词到 dic 中
+        for (List<String> synonym : synonyms) {
+            String parent = word.findParent(synonym.get(0));
+            dic.putIfAbsent(parent, new HashSet<String>());
+            dic.get(parent).add(synonym.get(0));
+            dic.get(parent).add(synonym.get(1));
+            dic.get(parent).add(synonym.get(2));
+        }
+        // 待替换的单词数组
+        String[] textArray = text.split("#");
+        dfs(ans, textArray, 0, new StringBuilder());
+//        ans.sort((a, b) -> a.compareTo(b));
+        return ans;
+    }
+
+    /**
+     * 从 textArray 的第 idx 个单词开始替换近义词，替换后的新句子放到 ans 中
+     *
+     * @param ans
+     * @param textArray
+     * @param idx
+     * @param sb
+     */
+    private void dfs(List<String> ans, String[] textArray, int idx, StringBuilder sb) {
+        if (idx == textArray.length) {
+            // 已经到末尾了，全部替换完毕
+            ans.add(sb.toString().trim());
+            return;
+        }
+        // 如果当前近义词字典不存在当前单词，则跳过当前单词
+        if (!word.map.containsKey(textArray[idx])) {
+            dfs(ans, textArray, idx + 1, sb.append("#").append(textArray[idx]));
+        } else {
+            // 获取当前待替换单词的父亲
+            String parent = word.findParent(textArray[idx]);
+            // 找到所有近义词
+            HashSet<String> strings = dic.get(parent);
+            // 当前单词用近义词代替
+            for (String string : strings) {
+                StringBuilder sbb = new StringBuilder(sb);
+                dfs(ans, textArray, idx + 1, sbb.append("#").append(string));
+            }
+        }
+    }
+
+    class Word {
+        /**
+         * key 为字符串
+         * value 为父字符串
+         */
+        Map<String, String> map;
+
+        Word(List<List<String>> synonyms) {
+            map = new HashMap<>();
+            for (List<String> synonym : synonyms) {
+                for (String s : synonym) {
+                    // 初始每个字符串的父字符串为其本身
+                    map.put(s, s);
+                }
+            }
+        }
+
+        void union(String s1, String s2) {
+            String parent1 = findParent(s1);
+            String parent2 = findParent(s2);
+            if (!parent1.equals(parent2)) {
+                map.put(s2, parent1);
+            }
+        }
+
+        String findParent(String s) {
+            while (!s.equals(map.get(s))) {
+                s = map.get(s);
+            }
+            return s;
+        }
+    }
+}
